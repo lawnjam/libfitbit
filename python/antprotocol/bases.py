@@ -1,6 +1,8 @@
 from .protocol import ANTReceiveException
 from .libusb import ANTlibusb
+from .pyserial import ANTpyserial
 import usb
+
 
 class DynastreamANT(ANTlibusb):
     """Class that represents the Dynastream USB stick base, for
@@ -56,3 +58,10 @@ class FitBitANT(ANTlibusb):
             self._receive()
         except usb.USBError:
             pass
+
+class SuuntoPCPodANT(ANTpyserial):
+    """Class that represents the Suunto PC POD USB stick base.
+
+    """
+    PORT = '/dev/ttyUSB0'
+    BAUD = 115200
