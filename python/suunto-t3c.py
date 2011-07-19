@@ -67,6 +67,7 @@
 # - Implementing data clearing
 
 import itertools, sys, random, operator, datetime
+import time
 from antprotocol.bases import FitBitANT, DynastreamANT, SuuntoPCPodANT
 from antprotocol.protocol import ANTReceiveException
 
@@ -147,23 +148,29 @@ class T3c(object):
                 self.in_mode_bsl,
                 self.on_charger)
 
-    def init_fitbit(self):
-        self.init_device_channel([0xff, 0xff, 0x01, 0x01])
-
     def init_t3c(self):
         self.init_device_channel([0x01, 0x00, 0x0a, 0x02])
 
     def init_device_channel(self, channel):
         # ANT device initialization
+        self.base._send_message(0x4d, self.base._chan, 0x3d) # Suunto version request
+        self.base._check_ok_response()
+        #self.base._send_message(0x4a, self.base._chan) # reset
+        #time.sleep(0.5)
+
+        self.base._send_message(0x4d, self.base._chan, 0x54) # capabilities 
+        self.base._check_ok_response()
+
+        # reset not suuported on Suunto PC Pod?
         #self.base.reset()
         #self.base.send_network_key(0, [0,0,0,0,0,0,0,0])
         self.base.assign_channel()
+        self.base.set_channel_id(channel)
         self.base.set_channel_period([0x9a, 0x19])
         self.base.set_channel_frequency(0x41)
 
         #self.base.set_transmit_power(0x3)
         #self.base.set_search_timeout(0xFF)
-        self.base.set_channel_id(channel)
         self.base.open_channel()
 
     def init_tracker_for_transfer(self):
@@ -182,8 +189,45 @@ class T3c(object):
 
     def init_t3c_for_transfer(self):
         self.init_t3c()
-        self.wait_for_beacon()
-        self.reset_tracker()
+        #self.wait_for_beacon() never arrives
+        # self.reset_tracker()
+
+        self.base._send_message(0x4e, self.base._chan, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        time.sleep(0.1)
+        #self.base._check_ok_response()
+        self.base._send_message(0x4f, self.base._chan, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        #self.base._check_ok_response()
+        time.sleep(0.1)
+
+        self.base._send_message(0x4f, self.base._chan, 0x21, 0x0f, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00)
+        d = self.base._check_burst_response()
+#        print d
+
+        self.base._send_message(0x4f, self.base._chan, 0x31, 0x0f, 0x00, 0x00, 0x0f, 0x2e, 0x00, 0x10)
+        d = self.base._check_burst_response()
+#        print d
+
+        self.base._send_message(0x4f, self.base._chan, 0x41, 0x05, 0x00, 0x03, 0x02, 0x0c, 0x02, 0x0a)
+        d = self.base._check_burst_response()
+#        print d
+
+        self.base._send_message(0x4f, self.base._chan, 0x51, 0x05, 0x00, 0x03, 0x00, 0x96, 0x10, 0x80)
+        d = self.base._check_burst_response()
+#        print d
+
+        self.base._send_message(0x4f, self.base._chan, 0x61, 0x05, 0x00, 0x03, 0x02, 0x0c, 0x02, 0x0a)
+        d = self.base._check_burst_response()
+#        print d
+
+        self.base._send_message(0x4f, self.base._chan, 0x71, 0x05, 0x00, 0x03, 0x06, 0x0c, 0x3d, 0x31)
+        d = self.base._check_burst_response()
+#        print d
+        #self.base._check_ok_response()
+        #self.base.send_acknowledged_data([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        #self.base.send_acknowledged_data([0x21, 0x0f, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00])
+        return
+
+#    0x00, 0x81, 0x05, 0x00, 0x03, 0x06, 0x49, 0x09, 0x40# req mark data for move
 
         # 0x78 0x02 is device id reset. This tells the device the new
         # channel id to hop to for dumpage
@@ -313,7 +357,6 @@ class T3c(object):
                 # start at 1 but 1 is subtracted per minute, see
                 # asterisk note on fitbit website, divide by 10.
                 active_score = (data[i+1] - 10) / 10.0
-                # first byte: I don't know. It starts at 0x81. So we at least subtract that.
                 not_sure = data[i] - 0x81
                 print "%s: ???: %d Active Score: %f Steps: %d" % (record_date, not_sure, active_score, steps)
                 i = i + 3

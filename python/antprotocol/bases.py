@@ -65,3 +65,26 @@ class SuuntoPCPodANT(ANTpyserial):
     """
     PORT = '/dev/ttyUSB0'
     BAUD = 115200
+
+
+    def _check_ok_response(self):
+        # response packets will always be 7 bytes
+        status = self._receive()
+
+        if len(status) == 0:
+            raise ANTStatusException("No message response received!")
+
+        if status[2] == 0x40 and status[5] == 0x0:
+            return
+
+        if status[2] == 0x40 and status[4] == 0x42 and status[5] == 0x15:
+            # happens if channel already assigned, safe to ignore
+            return
+
+        if status[2] == 0x40 and status[4] == 0x3d:
+            # happens if channel already assigned, safe to ignore
+            return
+
+#        raise ANTStatusException("Message status %d does not match 0x0 (NO_ERROR)" % (status[5]))
+        print "Message status %d does not match 0x0 (NO_ERROR)" % (status[5])
+

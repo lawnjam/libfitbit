@@ -73,6 +73,26 @@ class ANTpyserial(ANT):
         c = command
         self._connection.write(''.join(c))
 
+    def _receive_one(self, size=4096):
+        data = self._connection.read(2)
+        if data[0:1] == '\xa4':
+            # ANT message length is in the 2nd byte
+            # it excludes the Msg ID and Checksum, so add 2
+            l = ord(data[1:2]) + 2
+            # print 'ANT message length:', l
+            n = self._connection.inWaiting()
+            if n >= l:
+                data = data + self._connection.read(l)
+            else:
+                print 'Error: incomplete ANT message'
+                break
+
+        if len(data) == 0:
+            return data
+        if self._debug:
+            self.data_received(''.join(map(chr, bytearray(data))))
+        return bytearray(data)
+
     def _receive(self, size=4096):
         r = self._connection.read(1)
         n = self._connection.inWaiting()

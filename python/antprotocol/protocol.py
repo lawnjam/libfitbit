@@ -210,13 +210,31 @@ class ANT(object):
         response = []
         failure = False
         while 1:
+            time.sleep(0.1)
             try:
-                status = self._receive(15)
+                status = self._receive_one()
             except ANTReceiveException:
                 failure = True
             if len(status) > 0 and status[2] == 0x50 or status[2] == 0x4f:
                 response = response + status[4:-1].tolist()
-                if (status[3] >> 4) > 0x8 or status[2] == 0x4f:
+                if (status[3] >> 4) > 0x8:
+                    if failure:
+                        raise ANTReceiveException("Burst receive failed!")
+                    return response
+
+
+    def _check_burst_response_old(self):
+        response = []
+        failure = False
+        while 1:
+            time.sleep(0.1)
+            try:
+                status = self._receive()
+            except ANTReceiveException:
+                failure = True
+            if len(status) > 0 and status[2] == 0x50 or status[2] == 0x4f:
+                response = response + status[4:-1].tolist()
+                if (status[3] >> 4) > 0x8:
                     if failure:
                         raise ANTReceiveException("Burst receive failed!")
                     return response
