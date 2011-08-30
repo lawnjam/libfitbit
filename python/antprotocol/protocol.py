@@ -123,16 +123,13 @@ class ANT(object):
         except:
             return "%02x" % event
 
-    def _check_reset_response(self):
+    def _check_reset_response(self, status):
         data = self._receive()
 
-        # Sometimes we have to check for reset twice, if the first response is null
-        if len(data) == 0:
-            data = self._receive()
-
-        if data[2] == 0x6f:
+        # Expect a startup message return
+        if data[2] == 0x6f and data[3] == status:
             return
-        raise ANTStatusException("Reset expects message type 0x6f, got %02x" % (data[2]))
+        raise ANTStatusException("Reset expects message type 0x6f status 0x%02x, got type 0x%02x status 0x%02x" % (status, data[2], data[3]))
 
     def _check_ok_response(self):
         # response packets will always be 7 bytes
@@ -148,7 +145,12 @@ class ANT(object):
 
     def reset(self):
         self._send_message(0x4a, 0x00)
-        self._check_reset_response()
+        # According to protocol docs, the system will take a maximum
+        # of .5 seconds to restart
+        time.sleep(.6)
+        # This is a requested reset, so we expect back 0x20
+        # (COMMAND_RESET)
+        self._check_reset_response(0x20)
 
     def set_channel_frequency(self, freq):
         self._send_message(0x45, self._chan, freq)
